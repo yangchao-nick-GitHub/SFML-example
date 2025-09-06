@@ -11,7 +11,7 @@ GameWindow::GameWindow(const std::string title, const Vector2u size, bool fullsc
 }
 
 GameWindow::GameWindow()
-	: is_fullscreen_(false),size_(800, 600), title_("test")
+	: is_fullscreen_(false), size_(800, 600), title_("test")
 {
 	create();
 }

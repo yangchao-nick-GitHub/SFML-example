@@ -1,96 +1,163 @@
 #include "snake_game.h"
 
-World::World(Vector2f wind_size, uint16_t world_block_size) 
+#include <assert.h>
+
+Textbox::Textbox()
+{
+	setup(5, 9, 200, Vector2f(0, 0));
+}
+
+Textbox::Textbox(int l_visible, int l_charSize, int l_width, sf::Vector2f l_screenPos)
+{
+	setup(l_visible, l_charSize, l_width, l_screenPos);
+}
+
+
+void Textbox::setup(int l_visible, int l_charSize, int l_width, sf::Vector2f l_screenPos)
+{
+	m_numVisible = l_visible;
+	sf::Vector2f l_offset(2.0f, 2.0f);
+	m_font.loadFromFile("arial.ttf");
+	m_content.setFont(m_font);
+	m_content.setString("");
+	m_content.setCharacterSize(l_charSize);
+	m_content.setFillColor(sf::Color::White);
+	m_content.setPosition(l_screenPos + l_offset);
+	m_backdrop.setSize(sf::Vector2f(l_width, (l_visible * (l_charSize * 1.2f))));
+	m_backdrop.setFillColor(sf::Color(90,90,90,90));
+	m_backdrop.setPosition(l_screenPos);
+}
+
+void Textbox::Add(std::string l_message)
+{
+	m_messages.push_back(l_message);
+}
+
+void Textbox::Render(std::shared_ptr<GameWindow> l_wind)
+{
+	std::string l_content;
+	for(auto &itr : m_messages)
+	{
+		l_content.append(itr+"\n");
+	}
+	if(l_content != "")
+	{
+		m_content.setString(l_content);
+		l_wind->draw(m_backdrop);
+		l_wind->draw(m_content);
+	}
+}
+
+void Textbox::Clear()
+{
+	m_messages.clear();
+}
+
+Textbox::~Textbox()
+{
+	m_messages.clear();
+	if (m_messages.size() < 6)
+	{
+		return ;
+	}
+	m_messages.erase(m_messages.begin());
+}
+
+
+World::World(Vector2f wind_size, uint16_t world_block_size)
 	: m_windowSize(wind_size), m_wall_block_size(world_block_size)
 
-{ 
+{
 	static bool initialized = false;
-    if (!initialized) {
-        srand(static_cast<unsigned>(time(nullptr)));
-        initialized = true;
-    }
-    init();
+	
+	if (!initialized) {
+		srand(static_cast<unsigned>(time(nullptr)));
+		initialized = true;
+	}
+	init();
 }
 
 void World::RespawnApple()
 {
 
-    int maxX = (m_windowSize.x / m_wall_block_size) - 2; // 减少2格边界
-    int maxY = (m_windowSize.y / m_wall_block_size) - 2; // 减少2格边界
-    m_item = sf::Vector2f(
-        rand() % (maxX - 2) + 2,  // 从第2格开始，避免靠近左/上墙壁
-        rand() % (maxY - 2) + 2); // 从第2格开始，避免靠近上/下墙壁
-    m_apple.setPosition(m_item.x * m_wall_block_size, m_item.y * m_wall_block_size);
+	int maxX = (m_windowSize.x / m_wall_block_size) - 2; // 减少2格边界
+	int maxY = (m_windowSize.y / m_wall_block_size) - 2; // 减少2格边界
+	m_item = sf::Vector2f(
+		rand() % (maxX - 2) + 2,  // 从第2格开始，避免靠近左/上墙壁
+		rand() % (maxY - 2) + 2); // 从第2格开始，避免靠近上/下墙壁
+	m_apple.setPosition(m_item.x * m_wall_block_size, m_item.y * m_wall_block_size);
 }
 
 void World::RespawnReward()
 {
-    int maxX = (m_windowSize.x / m_wall_block_size) - 2; // 减少2格边界
-    int maxY = (m_windowSize.y / m_wall_block_size) - 2; // 减少2格边界
-    m_rewardItem = sf::Vector2f(
-        rand() % (maxX - 2) + 2,  // 从第2格开始
-        rand() % (maxY - 2) + 2); // 从第2格开始
-    m_reward.setPosition(m_rewardItem.x * m_wall_block_size, m_rewardItem.y * m_wall_block_size);
+	int maxX = (m_windowSize.x / m_wall_block_size) - 2; // 减少2格边界
+	int maxY = (m_windowSize.y / m_wall_block_size) - 2; // 减少2格边界
+	m_rewardItem = sf::Vector2f(
+		rand() % (maxX - 2) + 2,  // 从第2格开始
+		rand() % (maxY - 2) + 2); // 从第2格开始
+	m_reward.setPosition(m_rewardItem.x * m_wall_block_size, m_rewardItem.y * m_wall_block_size);
 }
 
 void World::Render(std::shared_ptr<GameWindow> window)
 {
-    for (int i = 0; i < 4; i++)
-    {
-        window->draw(m_bound[i]);
-    }
-    window->draw(m_apple);
+	for (int i = 0; i < 4; i++)
+	{
+		window->draw(m_bound[i]);
+	}
+	window->draw(m_apple);
 	window->draw(m_reward);
 }
 
 void World::update(std::shared_ptr<Snake> snake)
 {
-    if (snake->getHeadPos() == m_item)
-    {
-        snake->ExtendSnake();
-        RespawnApple();
-    }
-    
-    if (snake->getHeadPos() == m_rewardItem)
-    {
-        snake->ExtendSnake();
-        RespawnReward();
-		snake->addSpeed(5);
-    }
+	if (snake->getHeadPos() == m_item)
+	{
+		snake->appendScore(2);
+		snake->ExtendSnake();
+		RespawnApple();
+	}
 
-    /* 检测snake是否碰撞到墙壁 */
-    if (snake->getHeadPos().x <= 0 || snake->getHeadPos().x >= m_windowSize.x / m_wall_block_size - 1 ||
-        snake->getHeadPos().y <= 0 || snake->getHeadPos().y >= m_windowSize.y / m_wall_block_size - 1)
-    {
-        snake->setAlive(false);
-    }
+	if (snake->getHeadPos() == m_rewardItem)
+	{
+		snake->appendScore(5);
+		snake->ExtendSnake();
+		RespawnReward();
+		snake->addSpeed(5);
+	}
+
+	/* 检测snake是否碰撞到墙壁 */
+	if (snake->getHeadPos().x <= 0 || snake->getHeadPos().x >= m_windowSize.x / m_wall_block_size - 1 ||
+		snake->getHeadPos().y <= 0 || snake->getHeadPos().y >= m_windowSize.y / m_wall_block_size - 1)
+	{
+		snake->setAlive(false);
+	}
 
 }
 
 void World::init()
 {
-    m_apple.setRadius(m_wall_block_size / 2);
+	m_apple.setRadius(m_wall_block_size / 2);
 	m_reward.setSize(Vector2f(m_wall_block_size, m_wall_block_size));
-    RespawnApple();
-    RespawnReward();
-    
-    m_bound[0].setSize(Vector2f(m_windowSize.x, m_wall_block_size));
-    m_bound[1].setSize(Vector2f(m_wall_block_size, m_windowSize.y));
-    m_bound[2].setSize(Vector2f(m_windowSize.x, m_wall_block_size));
-    m_bound[3].setSize(Vector2f(m_wall_block_size, m_windowSize.x));
+	RespawnApple();
+	RespawnReward();
 
-    m_bound[0].setPosition(0, 0);
-    m_bound[1].setPosition(m_windowSize.x - m_wall_block_size, 0);
-    m_bound[2].setPosition(0, m_windowSize.x - m_wall_block_size);
-    m_bound[3].setPosition(0, 0);
+	m_bound[0].setSize(Vector2f(m_windowSize.x, m_wall_block_size));
+	m_bound[1].setSize(Vector2f(m_wall_block_size, m_windowSize.y));
+	m_bound[2].setSize(Vector2f(m_windowSize.x, m_wall_block_size));
+	m_bound[3].setSize(Vector2f(m_wall_block_size, m_windowSize.x));
 
-    m_bound[0].setFillColor(Color(135, 89, 64));
-    m_bound[1].setFillColor(Color(135, 89, 64));
-    m_bound[2].setFillColor(Color(135, 89, 64));
-    m_bound[3].setFillColor(Color(135, 89, 64));
+	m_bound[0].setPosition(0, 0);
+	m_bound[1].setPosition(m_windowSize.x - m_wall_block_size, 0);
+	m_bound[2].setPosition(0, m_windowSize.x - m_wall_block_size);
+	m_bound[3].setPosition(0, 0);
 
-    m_apple.setFillColor(Color::Red);
-    m_reward.setFillColor(Color::Magenta);
+	m_bound[0].setFillColor(Color(135, 89, 64));
+	m_bound[1].setFillColor(Color(135, 89, 64));
+	m_bound[2].setFillColor(Color(135, 89, 64));
+	m_bound[3].setFillColor(Color(135, 89, 64));
+
+	m_apple.setFillColor(Color::Red);
+	m_reward.setFillColor(Color::Magenta);
 
 }
 
@@ -111,6 +178,7 @@ void Snake::reset()
 	setDirection(Direction::None);
 	m_speed = SNAKE_MOVE_SPEED;
 	m_alive = true;
+	m_score = 0;
 }
 
 Vector2f Snake::getHeadPos()
@@ -127,7 +195,7 @@ void Snake::ExtendSnake()
 {
 	if (snake_body_container.empty())
 	{
-		return ;
+		return;
 	}
 
 	int size = snake_body_container.size();
@@ -257,7 +325,7 @@ void Snake::Render(std::shared_ptr<GameWindow> window)
 	body_rect.setPosition(seg_head.postion.x * m_size, seg_head.postion.y * m_size);
 	window->draw(body_rect);
 
-	for (int i = 1; i < snake_body_container.size() ; i++)
+	for (int i = 1; i < snake_body_container.size(); i++)
 	{
 		SnakeSegment& seg = snake_body_container[i];
 		body_rect.setFillColor(sf::Color::Green);
@@ -268,23 +336,71 @@ void Snake::Render(std::shared_ptr<GameWindow> window)
 
 void Snake::addSpeed(uint16_t add_speed)
 {
-    m_speed += add_speed;
+	m_speed += add_speed;
+}
+
+void Snake::checkSelfCollision()
+{
+	if (snake_body_container[0].postion == snake_body_container[1].postion)
+	{
+		std::cout << "0 == 1" << std::endl;
+		assert(false);
+	}
+	else if (snake_body_container[0].postion == snake_body_container[2].postion)
+	{
+		std::cout << "0 == 2" << std::endl;
+		assert(false);
+	}
+	else if (snake_body_container[1].postion == snake_body_container[2].postion)
+	{
+		std::cout << "1 == 2" << std::endl;
+		assert(false);
+	}
+}
+
+Direction Snake::getPhysicalDirection()
+{
+	SnakeSegment& head = snake_body_container[0];
+	SnakeSegment& head_next = snake_body_container[1];
+
+	if (head.postion.x == head_next.postion.x)
+	{
+		if (head.postion.y > head_next.postion.y)
+		{
+			return Direction::Down;
+		}
+		else
+		{
+			return Direction::Up;
+		}
+	}
+	else if (head.postion.y == head_next.postion.y)
+	{ 
+        if (head.postion.x > head_next.postion.x)
+		{
+			return Direction::Right;
+		}
+		else
+		{
+			return Direction::Left;
+		}
+	}
 }
 
 GamePrompt::GamePrompt(std::shared_ptr<GameWindow> window, const Vector2u& windowSize)
 {
 	m_window = window;
 	m_font.loadFromFile("arial.ttf");
-	
+
 	m_gameOverText.setFont(m_font);
 	m_gameOverText.setCharacterSize(50);
-    m_gameOverText.setFillColor(Color::Red);
-    m_gameOverText.setString("Game Over");
+	m_gameOverText.setFillColor(Color::Red);
+	m_gameOverText.setString("Game Over");
 
 	m_continueText.setFont(m_font);
 	m_continueText.setCharacterSize(30);
-    m_continueText.setFillColor(Color::White);
-    m_continueText.setString("Press Enter to Continue");
+	m_continueText.setFillColor(Color::White);
+	m_continueText.setString("Press Enter to Continue");
 
 	initTexts(windowSize);
 }
@@ -292,14 +408,14 @@ GamePrompt::GamePrompt(std::shared_ptr<GameWindow> window, const Vector2u& windo
 void GamePrompt::initTexts(const Vector2u& windowSize)
 {
 	FloatRect gameOverBounds = m_gameOverText.getLocalBounds();
-    m_gameOverText.setOrigin(gameOverBounds.left + gameOverBounds.width/2.0f,
-                            gameOverBounds.top + gameOverBounds.height/2.0f);
-    m_gameOverText.setPosition(windowSize.x/2.0f, windowSize.y/2.0f - 30);
-    
-    FloatRect continueBounds = m_continueText.getLocalBounds();
-    m_continueText.setOrigin(continueBounds.left + continueBounds.width/2.0f,
-                           continueBounds.top + continueBounds.height/2.0f);
-    m_continueText.setPosition(windowSize.x/2.0f, windowSize.y/2.0f + 30);
+	m_gameOverText.setOrigin(gameOverBounds.left + gameOverBounds.width / 2.0f,
+		gameOverBounds.top + gameOverBounds.height / 2.0f);
+	m_gameOverText.setPosition(windowSize.x / 2.0f, windowSize.y / 2.0f - 30);
+
+	FloatRect continueBounds = m_continueText.getLocalBounds();
+	m_continueText.setOrigin(continueBounds.left + continueBounds.width / 2.0f,
+		continueBounds.top + continueBounds.height / 2.0f);
+	m_continueText.setPosition(windowSize.x / 2.0f, windowSize.y / 2.0f + 30);
 }
 
 void GamePrompt::render()
@@ -310,63 +426,68 @@ void GamePrompt::render()
 
 SnakeGame::SnakeGame(std::shared_ptr<GameWindow> window, uint16_t world_block_size) : window_(window)
 {
-    m_world = std::make_shared<World>(static_cast<Vector2f>(window_->getSize()), world_block_size);
-    m_snake = std::make_shared<Snake>(world_block_size);
+
+	m_world = std::make_shared<World>(static_cast<Vector2f>(window_->getSize()), world_block_size);
+	m_snake = std::make_shared<Snake>(world_block_size);
 	m_prompt = std::make_shared<GamePrompt>(window, window_->getSize());
+
+	Vector2u windowSize = window_->getSize();
+	m_textbox.setup(5, 14, 200, sf::Vector2f(windowSize.x - 210, 0));
+	m_textbox.Add("Seeded random number generator with: " + std::to_string(time(NULL)));
 
 }
 
 void SnakeGame::handleInput()
 {
-    Event event;
-    while (window_->getWindow()->pollEvent(event))
-    {
-        if (event.type == Event::Closed)
-        {
-            window_->getWindow()->close();
-        }
+	Event event;
+	while (window_->getWindow()->pollEvent(event))
+	{
+		if (event.type == Event::Closed)
+		{
+			window_->getWindow()->close();
+		}
 
-        if (event.type == Event::KeyPressed)
-        {
-            switch (event.key.code)
-            {
-				case Keyboard::Escape:
-					window_->getWindow()->close();
-					break;
-                case Keyboard::Up:
-					if (m_snake->getDirection() != Direction::Up && m_snake->getDirection() != Direction::Down)
-					{ 
-						m_snake->setDirection(Direction::Up); 
-						std::cout << "Up" << std::endl;
-					}
-                    break;
-                case Keyboard::Down:
-                    if (m_snake->getDirection() != Direction::Up && m_snake->getDirection() != Direction::Down)
-					{
-						m_snake->setDirection(Direction::Down); 
-                        std::cout << "Down" << std::endl;
-					}
-                    break;
-                case Keyboard::Left:
-                    if (m_snake->getDirection() != Direction::Left && m_snake->getDirection() != Direction::Right)
-					{
-						m_snake->setDirection(Direction::Left); 
-                        std::cout << "Left" << std::endl;
-					}
-                    break;
-                case Keyboard::Right:
-                    if (m_snake->getDirection() != Direction::Left && m_snake->getDirection() != Direction::Right)
-                    {
-						m_snake->setDirection(Direction::Right);
-                        std::cout << "Right" << std::endl;
-					}
-                    break;
-                default:
-                    break;
+		if (event.type == Event::KeyPressed)
+		{
+			switch (event.key.code)
+			{
+			case Keyboard::Escape:
+				window_->getWindow()->close();
+				break;
+			case Keyboard::Up:
+				if (m_snake->getPhysicalDirection() != Direction::Up && m_snake->getPhysicalDirection() != Direction::Down)
+				{
+					m_snake->setDirection(Direction::Up);
+					std::cout << "Up" << std::endl;
+				}
+				break;
+			case Keyboard::Down:
+				if (m_snake->getPhysicalDirection() != Direction::Up && m_snake->getPhysicalDirection() != Direction::Down)
+				{
+					m_snake->setDirection(Direction::Down);
+					std::cout << "Down" << std::endl;
+				}
+				break;
+			case Keyboard::Left:
+				if (m_snake->getPhysicalDirection() != Direction::Left && m_snake->getPhysicalDirection() != Direction::Right)
+				{
+					m_snake->setDirection(Direction::Left);
+					std::cout << "Left" << std::endl;
+				}
+				break;
+			case Keyboard::Right:
+				if (m_snake->getPhysicalDirection() != Direction::Left && m_snake->getPhysicalDirection() != Direction::Right)
+				{
+					m_snake->setDirection(Direction::Right);
+					std::cout << "Right" << std::endl;
+				}
+				break;
+			default:
+				break;
 
-            }
-        }
-    }
+			}
+		}
+	}
 }
 
 std::shared_ptr<GameWindow> SnakeGame::getWindow()
@@ -377,35 +498,40 @@ std::shared_ptr<GameWindow> SnakeGame::getWindow()
 void SnakeGame::render()
 {
 	window_->drawBegin();
-    m_world->Render(window_);
-    m_snake->Render(window_);
+	m_textbox.Clear();
+	m_textbox.Add("Score: " + std::to_string(m_snake->getScore()));
+	m_world->Render(window_);
+	m_snake->Render(window_);
+	m_textbox.Render(window_);
 	window_->drawEnd();
+
+	m_snake->checkSelfCollision();
 }
 
 void SnakeGame::run()
 {
-    while (window_->isOpen())
-    { 
-        handleInput();
-        update();
-        render();
-    }
+	while (window_->isOpen())
+	{
+		handleInput();
+		update();
+		render();
+	}
 }
 
 void SnakeGame::update()
 {
 	m_timeStep = 1.0f / m_snake->getSpeed();
-    m_elapsed += m_clock.restart().asSeconds();
+	m_elapsed += m_clock.restart().asSeconds();
 
-    if (m_elapsed >= m_timeStep)
-    {
-        m_elapsed -= m_timeStep;
+	if (m_elapsed >= m_timeStep)
+	{
+		m_elapsed -= m_timeStep;
 		m_snake->Tick();
-        m_world->update(m_snake);
-        if (!m_snake->isAlive())
-        {
-            m_snake->reset();
-        }
-    }
+		m_world->update(m_snake);
+		if (!m_snake->isAlive())
+		{
+			m_snake->reset();
+		}
+	}
 
 }

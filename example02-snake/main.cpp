@@ -14,17 +14,17 @@ using namespace sf;
 
 int main()
 {
-     auto game_window = std::make_shared<SnakeGameWindow>("snake", Vector2u(800, 800));
+    auto game_window = std::make_shared<SnakeGameWindow>("snake", Vector2u(800, 800));
 
-     /* 网格宽是10个像素 */
-     auto snake_game = std::make_shared<SnakeGame>(game_window, WORLD_BLOCK_SIZE);
-     snake_game->run();
+    /* 网格宽是10个像素 */
+    auto snake_game = std::make_shared<SnakeGame>(game_window, WORLD_BLOCK_SIZE);
+    snake_game->run();
 
 
 
-     
-   
-   return 0;
+
+
+    return 0;
 }
 
 
