@@ -6,7 +6,7 @@
 
 int main()
 {
-    sf::RenderWindow window(sf::VideoMode(200, 100), "Window");
+    sf::RenderWindow window(sf::VideoMode(800, 600), "Window");
 
     Entity entity;
 
@@ -19,6 +19,8 @@ int main()
     game_stack.registerState<MenuState>(StateID::Menu);
     game_stack.registerState<GameState>(StateID::Game);
     game_stack.registerState<PauseState>(StateID::Pause);
+    game_stack.registerState<PauseState>(StateID::GameOver);
+
 
     game_stack.pushState(StateID::Menu);
 
@@ -36,9 +38,6 @@ int main()
         }
 
         game_stack.update();
-
-        std::cout << "\033[2J\033[1;1H"; // ANSI转义序列：清空屏幕并移动光标到左上角
-
 
         window.clear();
         game_stack.draw();

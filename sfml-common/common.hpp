@@ -9,6 +9,8 @@
 #include <unordered_map>
 #include <functional>
 #include <SFML/Window.hpp>
+#include <SFML/Graphics.hpp>
+
 
 enum class InputType {
     Keyboard,
@@ -224,10 +226,15 @@ public:
 
     void draw()
     {
-        for (auto& state : stack_)
+        if (!stack_.empty())
         {
-            state->draw();
+            stack_.back()->draw();
         }
+    }
+
+    void clear()
+    {
+        stack_.clear();
     }
 
     void update()
@@ -298,17 +305,33 @@ public:
     MenuState(StateStack& stack, Context context)
     :State(stack, context)
     {
+        if (!font_.loadFromFile("../resource/arial.ttf"))
+        {
+            std::cout << "Error loading font" << std::endl;
+        }
+
+        title_.setFont(font_);
+        title_.setString("SFML GAME");
+        title_.setCharacterSize(50);
+        title_.setFillColor(sf::Color::White);
+        title_.setPosition(250, 150);
+
+        prompt_.setFont(font_);
+        prompt_.setString("Press Enter to start...");
+        prompt_.setCharacterSize(20);
+        prompt_.setFillColor(sf::Color::White);
+        prompt_.setPosition(300, 350);
     }
 
     void draw() override
     {
-        // 绘制游戏菜单
-
+        context_.window.draw(title_);
+        context_.window.draw(prompt_);
     }
 
     void update() override
     {
-        printMenu();
+        
     }
 
     bool handleEvents(sf::Event& event, Entity& player) override
@@ -320,20 +343,11 @@ public:
         }
         return true;
     }
-private:
-    void printMenu()
-    {
-        // 清屏（在实际应用中，你可能需要使用系统特定的清屏命令）
-        std::cout << "\n\n\n";
-        std::cout << "==============================\n";
-        std::cout << "         SFML GAME            \n";
-        std::cout << "==============================\n";
-        std::cout << "\n";
 
-        std::cout << "\n";
-        std::cout << "Press ENTER to game\n";
-        std::cout << "\n";
-    }
+private:
+    sf::Font font_;
+    sf::Text title_;
+    sf::Text prompt_;
 };
 
 
@@ -369,12 +383,7 @@ public:
 
     void draw() override
     {
-        // 绘制游戏场景
-        std::cout << "\n\n\n";
-        std::cout << "==============================\n";
-        std::cout << "         GAME START            \n";
-        std::cout << "==============================\n";
-        std::cout << "\n";
+
     }
 
     void update() override
@@ -393,10 +402,18 @@ public:
     {
         if (event.type == sf::Event::KeyPressed && event.key.code == sf::Keyboard::P)
         {
-            std::cout << "pause game debug! go to Pause state." << std::endl;
+            std::cout << "go to Pause state." << std::endl;
             stack_.pushState(StateID::Pause);
             return true;
         }
+
+        if (event.type == sf::Event::KeyPressed && event.key.code == sf::Keyboard::O)
+        {   
+            std::cout << "Game Over." << std::endl;
+            stack_.pushState(StateID::GameOver);
+            return true;    
+        }
+
         input_mgr_.processEvent(context_.command_queue, event, player);
         return true;
     }
@@ -413,12 +430,7 @@ public:
 
     void draw() override
     {
-        // 绘制游戏场景
-        std::cout << "\n\n\n";
-        std::cout << "==============================\n";
-        std::cout << "         GAME PAUSE            \n";
-        std::cout << "==============================\n";
-        std::cout << "\n";
+
     }
 
     void update() override
@@ -433,6 +445,37 @@ public:
             std::cout << "restore game!" << std::endl;
             stack_.popState();
         }
+        return true;
+    }
+};
+
+
+class GameOverState : public State {
+public:
+    GameOverState(StateStack& stack, Context context)
+    :State(stack, context)
+    {
+    }
+
+    void draw() override
+    {
+
+    }
+
+    void update() override
+    {
+
+    }
+
+    bool handleEvents(sf::Event& event, Entity& player) override
+    {
+        if (event.type == sf::Event::KeyPressed && event.key.code == sf::Keyboard::Enter)
+        {
+            std::cout << "restore game!" << std::endl;
+            stack_.clear();
+            stack_.pushState(StateID::Menu);
+        }
+        return true;
     }
 };
 
