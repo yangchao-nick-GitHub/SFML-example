@@ -6,50 +6,21 @@
 #include <ctime>
 #include <window.h>
 
-#include "StateStack.h"
-#include "MenuState.h"
-#include "GameState.h"
-#include "command.h"
+#include "common.hpp"
+#include "snake_game.h"
 
 using namespace sf;
 
-class Entity {
-public:
-    void update() {};
-};
-
 int main()
 {
-    sf::RenderWindow window(sf::VideoMode(800, 600), "StateStack Example");
-    CommandQueue commands;
 
-    State::Context context{ &window, &commands };
-    StateStack stack(context);
+    auto game_window = std::make_shared<SnakeGameWindow>("snake", Vector2u(800, 800));
 
-    stack.registerState<MenuState>(States::Menu);
-    stack.registerState<GameState>(States::Game);
+    CommandQueue command_queue;
+    Context context = {command_queue, game_window, nullptr};
 
-    stack.pushState(States::Menu);
-
-    sf::Clock clock;
-    while (window.isOpen()) {
-        sf::Time dt = clock.restart();
-
-        sf::Event event;
-        while (window.pollEvent(event)) {
-            if (event.type == sf::Event::Closed)
-                window.close();
-
-            stack.handleEvent(event);
-        }
-
-        stack.update(dt);
-
-        window.clear();
-        stack.draw();
-        window.display();
-    }
-
+    auto snake_game = std::make_shared<SnakeGame>(game_window, WORLD_BLOCK_SIZE);
+    snake_game->run();
 
     return 0;
 }

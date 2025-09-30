@@ -9,6 +9,7 @@
 
 #include "window.h"
 #include "snake_game.h"
+#include "common.hpp"
 
 
 using namespace sf;
@@ -127,6 +128,7 @@ class SnakeGame {
 public:
 	SnakeGame(std::shared_ptr<GameWindow> window, uint16_t world_block_size);
 	void handleInput();
+    void inputHandle();
 	void render();
 	std::shared_ptr<GameWindow> getWindow();
 	void run();
@@ -142,7 +144,12 @@ private:
 	std::shared_ptr<GamePrompt> m_prompt;
 	Textbox m_textbox;
 	uint32_t m_score{ 0 };
-
+    StateStack game_stack;
 };
+
+
+
+
+
 
 #endif

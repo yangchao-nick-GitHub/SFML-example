@@ -426,20 +426,30 @@ void GamePrompt::render()
 
 SnakeGame::SnakeGame(std::shared_ptr<GameWindow> window, uint16_t world_block_size) : window_(window)
 {
+	game_stack.registerState<SnakeMenuState>(StateID::Menu);
+	game_stack.registerState<SnakeGameState>(StateID::Game);
+	game_stack.pushState(StateID::Menu);
 
 	m_world = std::make_shared<World>(static_cast<Vector2f>(window_->getSize()), world_block_size);
 	m_snake = std::make_shared<Snake>(world_block_size);
-	m_prompt = std::make_shared<GamePrompt>(window, window_->getSize());
+}
 
-	Vector2u windowSize = window_->getSize();
-	m_textbox.setup(5, 14, 200, sf::Vector2f(windowSize.x - 210, 0));
-	m_textbox.Add("Seeded random number generator with: " + std::to_string(time(NULL)));
+void SnakeGame::inputHandle()
+{
+	Event event;
+	while (window_->getWindow()->pollEvent(event))
+	{
+		if (event.type == Event::Closed)
+		{
+			window_->getWindow()->close();
+		}
 
+		game_stack.handleEvents(event, nullptr);
+	}
 }
 
 void SnakeGame::handleInput()
 {
-	Event event;
 	while (window_->getWindow()->pollEvent(event))
 	{
 		if (event.type == Event::Closed)
@@ -498,11 +508,8 @@ std::shared_ptr<GameWindow> SnakeGame::getWindow()
 void SnakeGame::render()
 {
 	window_->drawBegin();
-	m_textbox.Clear();
-	m_textbox.Add("Score: " + std::to_string(m_snake->getScore()));
 	m_world->Render(window_);
 	m_snake->Render(window_);
-	m_textbox.Render(window_);
 	window_->drawEnd();
 
 	m_snake->checkSelfCollision();
@@ -512,6 +519,7 @@ void SnakeGame::run()
 {
 	while (window_->isOpen())
 	{
+		game_stack.handleEvents();
 		handleInput();
 		update();
 		render();
