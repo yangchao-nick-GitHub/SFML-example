@@ -1,67 +1,6 @@
 #include "snake_game.h"
-
 #include <assert.h>
-
-Textbox::Textbox()
-{
-	setup(5, 9, 200, Vector2f(0, 0));
-}
-
-Textbox::Textbox(int l_visible, int l_charSize, int l_width, sf::Vector2f l_screenPos)
-{
-	setup(l_visible, l_charSize, l_width, l_screenPos);
-}
-
-
-void Textbox::setup(int l_visible, int l_charSize, int l_width, sf::Vector2f l_screenPos)
-{
-	m_numVisible = l_visible;
-	sf::Vector2f l_offset(2.0f, 2.0f);
-	m_font.loadFromFile("arial.ttf");
-	m_content.setFont(m_font);
-	m_content.setString("");
-	m_content.setCharacterSize(l_charSize);
-	m_content.setFillColor(sf::Color::White);
-	m_content.setPosition(l_screenPos + l_offset);
-	m_backdrop.setSize(sf::Vector2f(l_width, (l_visible * (l_charSize * 1.2f))));
-	m_backdrop.setFillColor(sf::Color(90,90,90,90));
-	m_backdrop.setPosition(l_screenPos);
-}
-
-void Textbox::Add(std::string l_message)
-{
-	m_messages.push_back(l_message);
-}
-
-void Textbox::Render(std::shared_ptr<GameWindow> l_wind)
-{
-	std::string l_content;
-	for(auto &itr : m_messages)
-	{
-		l_content.append(itr+"\n");
-	}
-	if(l_content != "")
-	{
-		m_content.setString(l_content);
-		l_wind->draw(m_backdrop);
-		l_wind->draw(m_content);
-	}
-}
-
-void Textbox::Clear()
-{
-	m_messages.clear();
-}
-
-Textbox::~Textbox()
-{
-	m_messages.clear();
-	if (m_messages.size() < 6)
-	{
-		return ;
-	}
-	m_messages.erase(m_messages.begin());
-}
+#include <string.h>
 
 
 World::World(Vector2f wind_size, uint16_t world_block_size)
@@ -98,14 +37,14 @@ void World::RespawnReward()
 	m_reward.setPosition(m_rewardItem.x * m_wall_block_size, m_rewardItem.y * m_wall_block_size);
 }
 
-void World::Render(std::shared_ptr<GameWindow> window)
+void World::Render(GameWindow& window)
 {
 	for (int i = 0; i < 4; i++)
 	{
-		window->draw(m_bound[i]);
+		window.draw(m_bound[i]);
 	}
-	window->draw(m_apple);
-	window->draw(m_reward);
+	window.draw(m_apple);
+	window.draw(m_reward);
 }
 
 void World::update(std::shared_ptr<Snake> snake)
@@ -175,7 +114,7 @@ void Snake::reset()
 	snake_body_container.push_back(SnakeSegment(20, 15));
 	snake_body_container.push_back(SnakeSegment(20, 16));
 	snake_body_container.push_back(SnakeSegment(20, 17));
-	setDirection(Direction::None);
+	setDirection(Direction::Up);
 	m_speed = SNAKE_MOVE_SPEED;
 	m_alive = true;
 	m_score = 0;
@@ -252,6 +191,7 @@ void Snake::ExtendSnake()
 
 void Snake::Tick()
 {
+	// std::cout << "Tick" << std::endl;
 	if (snake_body_container.empty() || direction == Direction::None)
 	{
 		return;
@@ -313,7 +253,7 @@ void Snake::CheckCollision()
 }
 
 
-void Snake::Render(std::shared_ptr<GameWindow> window)
+void Snake::Render(GameWindow& window)
 {
 	if (snake_body_container.empty())
 	{
@@ -323,14 +263,14 @@ void Snake::Render(std::shared_ptr<GameWindow> window)
 	SnakeSegment& seg_head = snake_body_container[0];
 	body_rect.setFillColor(sf::Color::Yellow);
 	body_rect.setPosition(seg_head.postion.x * m_size, seg_head.postion.y * m_size);
-	window->draw(body_rect);
+	window.draw(body_rect);
 
 	for (int i = 1; i < snake_body_container.size(); i++)
 	{
 		SnakeSegment& seg = snake_body_container[i];
 		body_rect.setFillColor(sf::Color::Green);
 		body_rect.setPosition(seg.postion.x * m_size, seg.postion.y * m_size);
-		window->draw(body_rect);
+		window.draw(body_rect);
 	}
 }
 
@@ -385,161 +325,276 @@ Direction Snake::getPhysicalDirection()
 			return Direction::Left;
 		}
 	}
+	
+	return Direction::None;
 }
 
-GamePrompt::GamePrompt(std::shared_ptr<GameWindow> window, const Vector2u& windowSize)
+
+State::State(SnakeContext& context)
+    : context_(context)
 {
-	m_window = window;
-	m_font.loadFromFile("arial.ttf");
-
-	m_gameOverText.setFont(m_font);
-	m_gameOverText.setCharacterSize(50);
-	m_gameOverText.setFillColor(Color::Red);
-	m_gameOverText.setString("Game Over");
-
-	m_continueText.setFont(m_font);
-	m_continueText.setCharacterSize(30);
-	m_continueText.setFillColor(Color::White);
-	m_continueText.setString("Press Enter to Continue");
-
-	initTexts(windowSize);
 }
 
-void GamePrompt::initTexts(const Vector2u& windowSize)
+SnakeMenuState::SnakeMenuState(SnakeContext& context)
+	: State(context)
 {
-	FloatRect gameOverBounds = m_gameOverText.getLocalBounds();
-	m_gameOverText.setOrigin(gameOverBounds.left + gameOverBounds.width / 2.0f,
-		gameOverBounds.top + gameOverBounds.height / 2.0f);
-	m_gameOverText.setPosition(windowSize.x / 2.0f, windowSize.y / 2.0f - 30);
-
-	FloatRect continueBounds = m_continueText.getLocalBounds();
-	m_continueText.setOrigin(continueBounds.left + continueBounds.width / 2.0f,
-		continueBounds.top + continueBounds.height / 2.0f);
-	m_continueText.setPosition(windowSize.x / 2.0f, windowSize.y / 2.0f + 30);
 }
 
-void GamePrompt::render()
+void SnakeMenuState::draw()
 {
-	m_window->draw(m_gameOverText);
-	m_window->draw(m_continueText);
+	RectangleShape rect(Vector2f(800, 800));
+	rect.setFillColor(Color(135, 89, 64));
+	context_.window.getWindow()->draw(rect);
 }
 
-SnakeGame::SnakeGame(std::shared_ptr<GameWindow> window, uint16_t world_block_size) : window_(window)
-{
-	game_stack.registerState<SnakeMenuState>(StateID::Menu);
-	game_stack.registerState<SnakeGameState>(StateID::Game);
-	game_stack.pushState(StateID::Menu);
-
-	m_world = std::make_shared<World>(static_cast<Vector2f>(window_->getSize()), world_block_size);
-	m_snake = std::make_shared<Snake>(world_block_size);
+void SnakeMenuState::update(sf::Event& event)
+{ 
+	
 }
 
-void SnakeGame::inputHandle()
+bool SnakeMenuState::handleInput(sf::Event& event)
 {
-	Event event;
-	while (window_->getWindow()->pollEvent(event))
+	if (event.type == Event::Closed || event.type == sf::Event::KeyPressed && event.key.code == sf::Keyboard::Escape)
 	{
-		if (event.type == Event::Closed)
-		{
-			window_->getWindow()->close();
-		}
-
-		game_stack.handleEvents(event, nullptr);
+		context_.window.getWindow()->close();
+		return true;
 	}
+
+	if (event.type == sf::Event::KeyPressed && event.key.code == sf::Keyboard::Enter)
+	{
+		std::cout<< "enter the Enter Key!" << std::endl;
+	}
+
+	if (event.type == sf::Event::KeyPressed && event.key.code == sf::Keyboard::P)
+	{
+		std::cout<< "game pause!" << std::endl;
+		context_.state_stack.pushState(StateID::Pause);
+	}
+
+	if (event.type == sf::Event::KeyPressed && event.key.code == sf::Keyboard::Space)
+	{
+		std::cout<< "game start!" << std::endl;
+		context_.state_stack.pushState(StateID::Game);
+	}
+
+    return true;
 }
 
-void SnakeGame::handleInput()
+SnakePauseState::SnakePauseState(SnakeContext& context)
+	: State(context)
 {
-	while (window_->getWindow()->pollEvent(event))
-	{
-		if (event.type == Event::Closed)
-		{
-			window_->getWindow()->close();
-		}
+}
 
-		if (event.type == Event::KeyPressed)
+void SnakePauseState::update(sf::Event& event)
+{
+	
+}
+
+void SnakePauseState::draw()
+{
+	RectangleShape rect(Vector2f(800, 800));
+	rect.setFillColor(Color(0, 255, 0));
+	context_.window.getWindow()->draw(rect);
+}
+
+bool SnakePauseState::handleInput(sf::Event& event)
+{
+	if (event.type == Event::Closed || event.type == sf::Event::KeyPressed && event.key.code == sf::Keyboard::Escape)
+	{
+		context_.window.getWindow()->close();
+		return true;
+	}
+
+	if (event.type == sf::Event::KeyPressed && event.key.code == sf::Keyboard::Space)
+	{
+		std::cout<< "SnakePauseState Space!" << std::endl;
+
+	}
+
+	if (event.type == sf::Event::KeyPressed && event.key.code == sf::Keyboard::P)
+	{
+		std::cout<< "exit SnakePauseState!" << std::endl;
+		context_.state_stack.last_paused_state = true;
+		context_.state_stack.cur_paused_state = false;
+		memset(&event, 0, sizeof(event));
+		context_.state_stack.popState();
+	}
+
+    return true;
+}
+
+
+
+SnakeGameState::SnakeGameState(SnakeContext& context)
+    : State(context)
+{
+	world_ = std::make_shared<World>(static_cast<Vector2f>(context.window.getSize()), WORLD_BLOCK_SIZE);
+	snake_ = std::make_shared<Snake>(WORLD_BLOCK_SIZE);
+}
+
+void SnakeGameState::draw()
+{
+    snake_->Render(context_.window);
+    world_->Render(context_.window);
+}
+
+void SnakeGameState::update(sf::Event& event)
+{
+    float step = 1.0f / snake_->getSpeed();
+
+	// Pause
+	if (context_.state_stack.cur_paused_state == true)
+	{
+		return ;
+	}
+
+	// Puase to game
+	if (context_.state_stack.last_paused_state == true && 
+		context_.state_stack.cur_paused_state == false)
+	{
+		context_.state_stack.last_paused_state = false;
+		// std::cout << "update clock_.restart()" << std::endl;
+		clock_.restart();
+		return ;
+	}
+
+	// Menu to game
+	if (context_.state_stack.last_paused_state == false && 
+		context_.state_stack.cur_paused_state == false)
+	{ 
+		elapsedTime_ += clock_.restart().asSeconds();
+	}
+
+
+	// std::cout << "elapsedTime_:" << elapsedTime_ << " step:" << step <<std::endl;
+	if (elapsedTime_ >= step)
+	{
+		// std::cout << "elapsedTime_ >= step" << std::endl;
+		elapsedTime_ -= step;
+		snake_->Tick();
+		world_->update(snake_);
+		if (!snake_->isAlive())
 		{
-			switch (event.key.code)
+			snake_->reset();
+		}
+	}
+
+	
+}
+
+bool SnakeGameState::handleInput(sf::Event& event)
+{
+	if (event.type == Event::KeyPressed)
+	{
+		switch (event.key.code)
+		{
+		case Keyboard::Escape:
+			context_.window.getWindow()->close();
+			break;
+		case Keyboard::Up:
+			if (snake_->getPhysicalDirection() != Direction::Up && snake_->getPhysicalDirection() != Direction::Down)
 			{
-			case Keyboard::Escape:
-				window_->getWindow()->close();
-				break;
-			case Keyboard::Up:
-				if (m_snake->getPhysicalDirection() != Direction::Up && m_snake->getPhysicalDirection() != Direction::Down)
-				{
-					m_snake->setDirection(Direction::Up);
-					std::cout << "Up" << std::endl;
-				}
-				break;
-			case Keyboard::Down:
-				if (m_snake->getPhysicalDirection() != Direction::Up && m_snake->getPhysicalDirection() != Direction::Down)
-				{
-					m_snake->setDirection(Direction::Down);
-					std::cout << "Down" << std::endl;
-				}
-				break;
-			case Keyboard::Left:
-				if (m_snake->getPhysicalDirection() != Direction::Left && m_snake->getPhysicalDirection() != Direction::Right)
-				{
-					m_snake->setDirection(Direction::Left);
-					std::cout << "Left" << std::endl;
-				}
-				break;
-			case Keyboard::Right:
-				if (m_snake->getPhysicalDirection() != Direction::Left && m_snake->getPhysicalDirection() != Direction::Right)
-				{
-					m_snake->setDirection(Direction::Right);
-					std::cout << "Right" << std::endl;
-				}
-				break;
-			default:
-				break;
-
+				snake_->setDirection(Direction::Up);
 			}
-		}
-	}
-}
+			break;
+		case Keyboard::Down:
+			if (snake_->getPhysicalDirection() != Direction::Up && snake_->getPhysicalDirection() != Direction::Down)
+			{
+				snake_->setDirection(Direction::Down);
+			}
+			break;
+		case Keyboard::Left:
+			if (snake_->getPhysicalDirection() != Direction::Left && snake_->getPhysicalDirection() != Direction::Right)
+			{
+				snake_->setDirection(Direction::Left);
+			}
+			break;
+		case Keyboard::Right:
+			if (snake_->getPhysicalDirection() != Direction::Left && snake_->getPhysicalDirection() != Direction::Right)
+			{
+				snake_->setDirection(Direction::Right);
+			}
+			break;
+		case Keyboard::P:
+			std::cout << "Pause-------------------------------------------------" << std::endl;
+			context_.state_stack.last_paused_state = false;
+			context_.state_stack.cur_paused_state = true;
+			context_.state_stack.pushState(StateID::Pause);
+			break;
+		default:
+			break;
 
-std::shared_ptr<GameWindow> SnakeGame::getWindow()
-{
-	return window_;
-}
-
-void SnakeGame::render()
-{
-	window_->drawBegin();
-	m_world->Render(window_);
-	m_snake->Render(window_);
-	window_->drawEnd();
-
-	m_snake->checkSelfCollision();
-}
-
-void SnakeGame::run()
-{
-	while (window_->isOpen())
-	{
-		game_stack.handleEvents();
-		handleInput();
-		update();
-		render();
-	}
-}
-
-void SnakeGame::update()
-{
-	m_timeStep = 1.0f / m_snake->getSpeed();
-	m_elapsed += m_clock.restart().asSeconds();
-
-	if (m_elapsed >= m_timeStep)
-	{
-		m_elapsed -= m_timeStep;
-		m_snake->Tick();
-		m_world->update(m_snake);
-		if (!m_snake->isAlive())
-		{
-			m_snake->reset();
 		}
 	}
 
+	return true;
 }
+
+
+std::unique_ptr<State> StateStack::getStateInstance(StateID state_id)
+{
+    auto found = factory_.find(state_id);
+    if (found != factory_.end())
+    {
+        return found->second();    
+    }
+
+    return nullptr;
+}
+
+void StateStack::pushState(StateID state_id)
+{
+    auto state = getStateInstance(state_id);
+    if (!state)
+    {
+        std::cout << "State not found" << std::endl;
+    }
+
+    stack_.push_back(std::move(state));
+}
+
+void StateStack::popState()
+{
+    if (stack_.empty())
+    {
+        return ;
+    }
+    stack_.pop_back();
+}
+
+void StateStack::handleInput(sf::Event& event)
+{
+    if (!stack_.empty())
+    {
+        stack_.back()->handleInput(event);
+    }
+}
+
+void StateStack::update(sf::Event& event)
+{
+    if (!stack_.empty())
+    {
+        stack_.back()->update(event);
+    }
+}
+
+void StateStack::clear()
+{
+    stack_.clear();
+}
+
+void StateStack::draw()
+{
+    if (!stack_.empty())
+    {
+        stack_.back()->draw();
+    }
+
+}
+
+
+
+
+
+
+

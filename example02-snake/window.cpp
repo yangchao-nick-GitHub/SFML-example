@@ -1,5 +1,3 @@
-#include <SFML/Graphics.hpp>
-
 #include "window.h"
 
 using namespace sf;
@@ -20,7 +18,6 @@ void GameWindow::create()
 {
 	auto style = is_fullscreen_ ? Style::Fullscreen : Style::Default;
 	window_.create(VideoMode(size_.x, size_.y), title_, style);
-
 	window_.setFramerateLimit(60);
 }
 
@@ -35,14 +32,19 @@ RenderWindow* GameWindow::getWindow()
 	return &window_;
 }
 
-void GameWindow::destroy()
+bool GameWindow::pollEvent(Event& event)
+{
+	return window_.pollEvent(event);
+}
+
+void GameWindow::close()
 {
 	window_.close();
 }
 
 GameWindow::~GameWindow()
 {
-	destroy();
+	close();
 }
 
 void GameWindow::drawBegin()
@@ -66,33 +68,5 @@ bool GameWindow::isOpen()
 }
 
 
-SnakeGameWindow::SnakeGameWindow()
-	: GameWindow()
-{
-}
-
-SnakeGameWindow::SnakeGameWindow(const std::string title, const sf::Vector2u size, bool fullscreen)
-	: GameWindow(title, size, fullscreen)
-{
-}
-
-void SnakeGameWindow::handleInput()
-{
-	Event event;
-	while (window_.pollEvent(event))
-	{
-		if (event.type == Event::Closed)
-		{
-			window_.close();
-		}
-		else if (event.type == Event::KeyPressed)
-		{
-			if (event.key.code == Keyboard::Escape)
-			{
-				window_.close();
-			}
-		}
-	}
-}
 
 
